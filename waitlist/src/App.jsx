@@ -8,24 +8,65 @@ function App() {
   const [error, setError] = useState('')
 
   const metrics = [
-    { label: 'Households surveyed', value: '320+', detail: 'Shoppers shaped our AI co-pilot.' },
-    { label: 'Average time saved', value: '18 min', detail: 'Per grocery visit during pilot runs.' },
-    { label: 'Fridge waste reduced', value: '27%', detail: 'Less guesswork, fewer expired items.' },
+    {
+      value: 'Less stress',
+      label: 'No more aisle anxiety',
+      detail: 'Skip the guesswork and wandering. Every stop is intentional, not hopeful.',
+    },
+    {
+      value: 'Faster trips',
+      label: 'In, out, done',
+      detail: 'Turn 45‑minute shops into focused missions that fit between everything else.',
+    },
+    {
+      value: 'Smarter baskets',
+      label: 'Decisions you trust',
+      detail: 'See better options instantly so your cart matches your goals—not just habits.',
+    },
+  ]
+
+  const demoMessages = [
+    { from: 'user', text: 'I have 20 minutes, need dinner for 2.' },
+    { from: 'ai', text: 'Got it. Any dietary preferences or allergies?' },
+    { from: 'user', text: 'Gluten-free, something under $25.' },
+    {
+      from: 'ai',
+      text:
+        'I’ll guide you through pasta, veg, and sauce in Aisles 4 and 6, with two promo options on gluten-free spaghetti.',
+    },
+    { from: 'user', text: 'Perfect. Can we add a quick dessert?' },
+    {
+      from: 'ai',
+      text:
+        'Yes. I’ll route you past the chilled aisle for a 2-minute pick-up on mini cheesecakes that fit your budget.',
+    },
   ]
 
   const flowSteps = [
     {
-      title: 'Tell Reasi what you need',
-      description: 'Speak or type it naturally—“quick dinner for four” or “gluten-free snacks under $10”—and we build the plan.',
+      title: 'Ask',
+      description:
+        'Tell REASI AI what you’re doing—“quick dinner for two under $25” or “nut‑free snacks for school”.',
     },
     {
-      title: 'See the smartest route',
-      description: 'We pull live shelf data, promos, and aisle maps so you glide through the store without double-backs.',
+      title: 'Locate',
+      description: 'We translate that into exact products and aisle‑accurate locations in your specific store.',
     },
     {
-      title: 'Adapt in real time',
-      description: 'If something moves or sells out, Reasi suggests swaps that still match your taste, budget, and pantry.',
+      title: 'Navigate',
+      description: 'Follow an iOS‑style map that minimizes backtracking and keeps you moving with purpose.',
     },
+    {
+      title: 'Shop smarter',
+      description: 'Get live suggestions, swaps, and reminders so you leave with everything you actually need.',
+    },
+  ]
+
+  const backgroundNodes = [
+    { id: 'orb-1', size: 360, top: '6%', left: '-8%', duration: 24 },
+    { id: 'orb-2', size: 280, top: '68%', left: '10%', duration: 28 },
+    { id: 'orb-3', size: 420, top: '32%', left: '72%', duration: 32 },
+    { id: 'orb-4', size: 240, top: '80%', left: '62%', duration: 26 },
   ]
 
   useEffect(() => {
@@ -100,24 +141,46 @@ function App() {
 
   return (
     <div className="page">
-      <header className="header">
-        <div className="header__brand">
-          <img className="header__logo" src="/logos/Logo.png" alt="Reasi logo" />
-          <div className="header__mark">Reasi</div>
-        </div>
-        <span className="header__badge">AI supermarket co-pilot</span>
-      </header>
+      <div className="motion-bg" aria-hidden="true">
+        <video
+          className="motion-bg__video"
+          src="/videos/1105127_1080p_Shop_1920x1080.mov"
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+        />
+        <div className="motion-bg__scanlines" />
+        <div className="motion-bg__grid" />
+        {backgroundNodes.map((node) => (
+          <div
+            key={node.id}
+            className="motion-bg__orb"
+            style={{
+              '--size': `${node.size}px`,
+              '--top': node.top,
+              '--left': node.left,
+              '--duration': `${node.duration}s`,
+            }}
+          />
+        ))}
+      </div>
 
       <main className="main">
         <section className="hero container reveal" data-animate>
+          <div className="hero__logo-mark">
+            <img src="/logos/Logo.png" alt="Reasi logo" />
+            <span>Reasi</span>
+          </div>
           <span className="hero__accent" aria-hidden="true" />
           <span className="hero__accent hero__accent--secondary" aria-hidden="true" />
-          <p className="hero__eyebrow">Smarter supermarket runs</p>
-          <h1 className="hero__title">A store-savvy co-pilot that knows every aisle, promo, and preference.</h1>
+          <h1 className="hero__title">Never get lost in the supermarket again.</h1>
+          <p className="hero__eyebrow">Ask anything. Find it instantly.</p>
           <p className="hero__subtitle">
-            Reasi fuses live supermarket data with an LLM concierge so you can ask for items in plain
-            language, get instant directions, and swap when shelves surprise you. It’s like chatting
-            with a store associate who actually knows everything.
+            REASI AI is your in‑store supermarket companion that knows every aisle, every shelf, and every
+            corner. Just describe what you’re looking for in natural language and it tells you exactly
+            where to go—down to the aisle, bay, and section.
           </p>
           <div className="hero__scroll" aria-hidden="true">
             <span>Scroll for the walkthrough</span>
@@ -157,8 +220,44 @@ function App() {
             </p>
           )}
           {status === 'success' && !error && (
-            <p className="waitlist__feedback">We’ll be in touch when Reasi is ready for you.</p>
+            <p className="waitlist__feedback">We’ll be in touch when REASI AI is ready for you.</p>
           )}
+          {status !== 'success' && !error && (
+            <p className="waitlist__microcopy">No spam, no fees, early access only.</p>
+          )}
+        </section>
+
+        <section className="demo container reveal" data-animate>
+          <div className="demo__copy">
+            <h2>See your in‑store co‑pilot in action.</h2>
+            <p>
+              Watch REASI AI turn a messy grocery run into a calm, guided walkthrough—every question from
+              “where’s the tahini?” to “what’s a quick gluten‑free dinner?” answered in seconds. It feels
+              less like using an app, and more like talking to the one store staff member who knows
+              everything.
+            </p>
+          </div>
+
+          <div className="demo__phone">
+            <div className="demo__status-bar">
+              <span>Reasi Assistant</span>
+              <span className="demo__status-dot" />
+            </div>
+            <div className="demo__screen">
+              {demoMessages.map((message, index) => (
+                <div
+                  key={`${message.from}-${index}`}
+                  className={`demo__bubble demo__bubble--${message.from}`}
+                  style={{ '--delay': `${index * 0.08}s` }}
+                >
+                  <p>{message.text}</p>
+                </div>
+              ))}
+            </div>
+            <div className="demo__input-bar">
+              <span>Ask Reasi anything about this store…</span>
+            </div>
+          </div>
         </section>
 
         <section className="metrics container" aria-label="Pilot highlights" data-animate>
@@ -181,29 +280,46 @@ function App() {
         </section>
 
         <section className="features container reveal" data-animate>
-          <h2 className="features__title">What makes Reasi different?</h2>
+          <h2 className="features__title">REASI AI turns the supermarket into a place that finally makes sense.</h2>
+          <p className="features__intro">
+            Ask in your own words, and REASI AI responds with conversational answers, aisle‑accurate
+            directions, and an iOS‑style map that feels familiar from the first use. No more hunting through
+            categories or guessing where things “should” be.
+          </p>
           <ul className="features__list">
             <li>
-              <span>Conversational find-as-you-go</span>
-              <p>Ask for “vegan pesto for pasta” or “budget-friendly cereal” and get aisle-level guidance instantly.</p>
+              <span>Ask naturally (voice or text)</span>
+              <p>Speak or type like you would to a friend—no rigid keywords or menus.</p>
             </li>
             <li>
-              <span>Live store intelligence</span>
-              <p>Pair real-time shelf data with your household’s preferences and allergies to avoid dead ends.</p>
+              <span>Aisle‑accurate directions</span>
+              <p>Get precise guidance inside the store, not just “somewhere in aisle 7”.</p>
             </li>
             <li>
-              <span>Suggested swaps that stick</span>
-              <p>See promotion-ready alternatives and smart substitutions the moment the shelf is empty.</p>
+              <span>Visual map navigation</span>
+              <p>Follow a clean, phone‑native route that minimizes backtracking and dead ends.</p>
+            </li>
+            <li>
+              <span>Real‑time product info</span>
+              <p>Check variants, availability, and key details before you even walk to the shelf.</p>
+            </li>
+            <li>
+              <span>Smart alternatives &amp; healthier suggestions</span>
+              <p>Discover swaps that match your budget, health goals, and dietary needs.</p>
+            </li>
+            <li>
+              <span>Works in major supermarkets</span>
+              <p>Designed to plug into leading supermarket chains so your experience travels with you.</p>
             </li>
           </ul>
         </section>
 
         <section className="flow container reveal" data-animate>
           <div className="flow__header">
-            <h2>How the in-store magic happens</h2>
+            <h2>How REASI AI fits into your shop.</h2>
             <p>
-              Reasi feels like the team member on staff who knows every aisle, every circular, and your
-              go-to picks. Here’s how a single request becomes a streamlined route.
+              Shop with a simple, reassuring flow: describe your mission once and let REASI AI handle the
+              locating, routing, and smart suggestions while you stay present in the aisle.
             </p>
           </div>
           <div className="flow__steps">
@@ -219,28 +335,62 @@ function App() {
 
         <section className="story container reveal" data-animate>
           <div className="story__content">
-            <h2>Built for those tight grocery missions.</h2>
+            <h2>The aisle hunt shouldn’t be this hard.</h2>
             <p>
-              Reasi blends your pantry plan with store signals, so the route adapts when the deli counter
-              is crowded or the produce bins shift. No juggling multiple apps—just natural language
-              prompts, instant aisle directions, and checkout-ready baskets.
+              You walk in for “just a few things” and end up pacing aisles, backtracking, and squinting at
+              signs that never quite match what’s in your head. Products move, layouts change, each store
+              has its own secret logic, and simple questions like “where’s the coconut milk?” turn into
+              five‑minute detours. It’s a weekly time tax that quietly drains energy from already busy
+              days—and it shouldn’t be on you to memorize every shelf.
             </p>
           </div>
 
           <blockquote className="story__quote">
             <p>
-              “I asked for ‘kid-friendly snacks under five bucks’ and it walked me to a promo I would’ve
-              never spotted. That alone saved me a lap.”
+              “I asked for ‘kid‑friendly snacks under five bucks’ and it walked me straight to a promo I
+              would’ve never spotted. That alone saved me a lap.”
             </p>
             <cite>— Maya, parent of two, pilot family of four</cite>
           </blockquote>
+        </section>
+
+        <section className="perks container reveal" data-animate>
+          <h2>Why join the waitlist now.</h2>
+          <ul>
+            <li>
+              <span>Early beta access</span>
+              <p>Be among the first shoppers to use REASI AI in real supermarkets as we roll out.</p>
+            </li>
+            <li>
+              <span>Shape the product</span>
+              <p>Vote on features, share feedback, and influence what we build next.</p>
+            </li>
+            <li>
+              <span>Insider updates</span>
+              <p>Get behind‑the‑scenes progress, launch timelines, and store rollout news.</p>
+            </li>
+            <li>
+              <span>Founding member perks</span>
+              <p>Enjoy recognition and benefits reserved for our earliest supporters.</p>
+            </li>
+          </ul>
+        </section>
+
+        <section className="social container reveal" data-animate>
+          <h2>Built by people who know supermarkets and AI.</h2>
+          <p>
+            REASI AI is created by people who’ve worked inside supermarkets and on cutting‑edge AI systems.
+            We test with real shoppers doing real weekly shops—families, students, and busy professionals—to
+            refine every interaction. Under the hood, REASI AI combines store‑level data with advanced
+            language models to understand your intent and translate it into precise, in‑store actions.
+          </p>
         </section>
       </main>
 
       <footer className="footer">
         <div className="container footer__inner" data-animate>
-          <span>© {new Date().getFullYear()} Reasi Labs</span>
-          <span>Built with intention, in black &amp; white.</span>
+          <span>Built with ❤️ in Australia.</span>
+          <span>© 2025 REASI AI.</span>
         </div>
       </footer>
     </div>
