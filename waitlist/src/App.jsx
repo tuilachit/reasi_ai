@@ -12,6 +12,9 @@ const MSG_ALREADY_ON_LIST = "Looks like you're already on the list!"
 const MSG_SUBMIT_FAILED =
   'Something went wrong submitting the form. Please try again in a moment.'
 
+/** Baseline signups when offline, loading, or count query fails (100 real people already). */
+const DEFAULT_WAITLIST_COUNT = 100
+
 function formatFlooredPlus(count) {
   const n = Number(count)
   if (!Number.isFinite(n) || n < 0) {
@@ -30,7 +33,7 @@ export default function App() {
   const heroEmailRef = useRef(null)
   const wlEmailRef = useRef(null)
 
-  const [rowCount, setRowCount] = useState(null)
+  const [rowCount, setRowCount] = useState(DEFAULT_WAITLIST_COUNT)
   const [extraAfterSuccess, setExtraAfterSuccess] = useState(0)
 
   const [heroEmail, setHeroEmail] = useState('')
@@ -50,7 +53,7 @@ export default function App() {
 
     async function loadCount() {
       if (!supabase) {
-        setRowCount(0)
+        setRowCount(DEFAULT_WAITLIST_COUNT)
         return
       }
 
@@ -66,13 +69,15 @@ export default function App() {
 
       if (error) {
         console.warn('Waitlist count query failed:', error.message)
-        setRowCount(0)
+        setRowCount(DEFAULT_WAITLIST_COUNT)
         return
       }
 
       const n = typeof count === 'string' ? parseInt(count, 10) : count
       if (Number.isFinite(n)) {
         setRowCount(n)
+      } else {
+        setRowCount(DEFAULT_WAITLIST_COUNT)
       }
     }
 
@@ -83,8 +88,7 @@ export default function App() {
     }
   }, [])
 
-  const countStrong =
-    rowCount === null ? '…' : formatFlooredPlus(rowCount + extraAfterSuccess)
+  const countStrong = formatFlooredPlus(rowCount + extraAfterSuccess)
 
   useEffect(() => {
     const nodes = document.querySelectorAll('.reveal')
