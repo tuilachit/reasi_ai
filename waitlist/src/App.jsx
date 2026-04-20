@@ -12,8 +12,11 @@ const MSG_ALREADY_ON_LIST = "Looks like you're already on the list!"
 const MSG_SUBMIT_FAILED =
   'Something went wrong submitting the form. Please try again in a moment.'
 
-function formatFlooredPlus(total) {
-  const n = typeof total === 'number' && !Number.isNaN(total) ? total : 100
+function formatFlooredPlus(count) {
+  const n = Number(count)
+  if (!Number.isFinite(n) || n < 0) {
+    return '0+'
+  }
   const floored = Math.floor(n / 10) * 10
   return `${floored}+`
 }
@@ -47,19 +50,29 @@ export default function App() {
 
     async function loadCount() {
       if (!supabase) {
+        setRowCount(0)
         return
       }
 
+      // Prefer a concrete column: `select('*', { count })` can return null count under RLS
+      // when no row-level SELECT is allowed for `*`.
       const { count, error } = await supabase
         .from('waitlist_signups')
-        .select('*', { count: 'exact', head: true })
+        .select('email', { count: 'exact', head: true })
 
       if (cancelled) {
         return
       }
 
-      if (!error && typeof count === 'number') {
-        setRowCount(count)
+      if (error) {
+        console.warn('Waitlist count query failed:', error.message)
+        setRowCount(0)
+        return
+      }
+
+      const n = typeof count === 'string' ? parseInt(count, 10) : count
+      if (Number.isFinite(n)) {
+        setRowCount(n)
       }
     }
 
@@ -70,7 +83,43 @@ export default function App() {
     }
   }, [])
 
-  const countStrong = formatFlooredPlus((rowCount ?? 100) + extraAfterSuccess)
+  const countStrong =
+    rowCount === null ? '…' : formatFlooredPlus(rowCount + extraAfterSuccess)
+
+  useEffect(() => {
+    const nodes = document.querySelectorAll('.reveal')
+    if (nodes.length === 0) {
+      return
+    }
+
+    const thresholds = Array.from({ length: 21 }, (_, i) => i * 0.05)
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) {
+            return
+          }
+
+          const el = entry.target
+          const want = parseFloat(el.getAttribute('data-reveal-ratio') || '0.8')
+          const rootH = entry.rootBounds?.height ?? window.innerHeight
+          const tall = entry.boundingClientRect.height > rootH * 0.85
+          const effective = tall ? Math.min(want, 0.2) : want
+
+          if (entry.intersectionRatio >= effective) {
+            el.classList.add('revealed')
+            observer.unobserve(el)
+          }
+        })
+      },
+      { threshold: thresholds },
+    )
+
+    nodes.forEach((node) => observer.observe(node))
+
+    return () => observer.disconnect()
+  }, [])
 
   /**
    * Same Supabase contract as legacy `handleSubmit`: `waitlist_signups` insert,
@@ -164,7 +213,7 @@ export default function App() {
 
   return (
     <>
-      <nav>
+      <nav className="nav-reveal">
         <span className="nav-logo">Reasi</span>
         <div className="nav-links">
           <a href="#how">How it works</a>
@@ -247,7 +296,8 @@ export default function App() {
         </div>
 
         <div className="hero-right">
-          <div className="float-card">
+          <div className="float-card-float-anchor">
+            <div className="float-card">
             <div className="fc-label">Your meals</div>
             <div className="fc-meal">
               <div className="fc-day">Monday</div>
@@ -273,9 +323,11 @@ export default function App() {
                 <span className="fc-tag">25 min</span>
               </div>
             </div>
+            </div>
           </div>
 
-          <div className="phone">
+          <div className="phone-float-anchor">
+            <div className="phone">
             <div className="phone-status">
               <span className="phone-time">9:41</span>
               <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -370,11 +422,12 @@ export default function App() {
                 </div>
               </div>
             </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <div className="waitlist-bar" id="waitlist">
+      <div className="waitlist-bar reveal reveal--waitlist" id="waitlist" data-reveal-ratio="0.8">
         <p className="wl-count">
           Join <strong id="count-num">{countStrong}</strong> others on the waitlist.
         </p>
@@ -425,36 +478,44 @@ export default function App() {
 
       <section className="how-section" id="how">
         <div className="how-inner">
-          <p className="how-label">How it works</p>
+          <p className="how-label reveal reveal--fade" data-reveal-ratio="0.6">
+            How it works
+          </p>
           <div className="steps-grid">
-            <div className="step-item">
-              <div className="step-n">01</div>
-              <div className="step-title">Plan your meals</div>
-              <div className="step-desc">
-                Tell Reasi how you eat and what you&apos;re craving. Get a tailored weekly meal plan with recipes in one tap.
+            {[
+              {
+                n: '01',
+                title: 'Plan your meals',
+                desc: "Tell Reasi how you eat and what you're craving. Get a tailored weekly meal plan with recipes in one tap.",
+              },
+              {
+                n: '02',
+                title: 'Build your list',
+                desc: 'Your shopping list is generated automatically. Organised by aisle, with cost estimates included.',
+              },
+              {
+                n: '03',
+                title: 'Automate your cart',
+                desc: 'Reasi adds everything to your Woolworths or Coles cart. Ready to checkout in seconds, not minutes.',
+              },
+              {
+                n: '04',
+                title: 'Navigate the store',
+                desc: 'Shopping in person? Get aisle-by-aisle guidance so you move through the store fast and forget nothing.',
+              },
+            ].map((step, index) => (
+              <div
+                key={step.n}
+                className="step-item reveal"
+                data-reveal-ratio="0.8"
+                data-delay={index * 100}
+                style={{ transitionDelay: `${index * 100}ms` }}
+              >
+                <div className="step-n">{step.n}</div>
+                <div className="step-title">{step.title}</div>
+                <div className="step-desc">{step.desc}</div>
               </div>
-            </div>
-            <div className="step-item">
-              <div className="step-n">02</div>
-              <div className="step-title">Build your list</div>
-              <div className="step-desc">
-                Your shopping list is generated automatically. Organised by aisle, with cost estimates included.
-              </div>
-            </div>
-            <div className="step-item">
-              <div className="step-n">03</div>
-              <div className="step-title">Automate your cart</div>
-              <div className="step-desc">
-                Reasi adds everything to your Woolworths or Coles cart. Ready to checkout in seconds, not minutes.
-              </div>
-            </div>
-            <div className="step-item">
-              <div className="step-n">04</div>
-              <div className="step-title">Navigate the store</div>
-              <div className="step-desc">
-                Shopping in person? Get aisle-by-aisle guidance so you move through the store fast and forget nothing.
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
