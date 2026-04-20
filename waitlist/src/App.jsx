@@ -1,120 +1,82 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import { supabase } from './lib/supabaseClient.js'
 
-function App() {
-  const [email, setEmail] = useState('')
-  const [status, setStatus] = useState('idle')
-  const [error, setError] = useState('')
+/** Matches legacy waitlist `handleSubmit` validation. */
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-  const metrics = [
-    {
-      value: 'Less stress',
-      label: 'No more aisle anxiety',
-      detail: 'Skip the guesswork and wandering. Every stop is intentional, not hopeful.',
-    },
-    {
-      value: 'Faster trips',
-      label: 'In, out, done',
-      detail: 'Turn 45‑minute shops into focused missions that fit between everything else.',
-    },
-    {
-      value: 'Smarter baskets',
-      label: 'Decisions you trust',
-      detail: 'See better options instantly so your cart matches your goals—not just habits.',
-    },
-  ]
+const MSG_INVALID_EMAIL = 'Enter a valid email address.'
+const MSG_SUPABASE_MISSING =
+  'Supabase client is not configured. Please check your environment variables.'
+const MSG_ALREADY_ON_LIST = "Looks like you're already on the list!"
+const MSG_SUBMIT_FAILED =
+  'Something went wrong submitting the form. Please try again in a moment.'
 
-  const demoMessages = [
-    { from: 'user', text: 'I have 20 minutes, need dinner for 2.' },
-    { from: 'ai', text: 'Got it. Any dietary preferences or allergies?' },
-    { from: 'user', text: 'Gluten-free, something under $25.' },
-    {
-      from: 'ai',
-      text:
-        'I’ll guide you through pasta, veg, and sauce in Aisles 4 and 6, with two promo options on gluten-free spaghetti.',
-    },
-    { from: 'user', text: 'Perfect. Can we add a quick dessert?' },
-    {
-      from: 'ai',
-      text:
-        'Yes. I’ll route you past the chilled aisle for a 2-minute pick-up on mini cheesecakes that fit your budget.',
-    },
-  ]
+function formatFlooredPlus(total) {
+  const n = typeof total === 'number' && !Number.isNaN(total) ? total : 100
+  const floored = Math.floor(n / 10) * 10
+  return `${floored}+`
+}
 
-  const flowSteps = [
-    {
-      title: 'Ask',
-      description:
-        'Tell REASI AI what you’re doing—“quick dinner for two under $25” or “nut‑free snacks for school”.',
-    },
-    {
-      title: 'Locate',
-      description: 'We translate that into exact products and aisle‑accurate locations in your specific store.',
-    },
-    {
-      title: 'Navigate',
-      description: 'Follow an iOS‑style map that minimizes backtracking and keeps you moving with purpose.',
-    },
-    {
-      title: 'Shop smarter',
-      description: 'Get live suggestions, swaps, and reminders so you leave with everything you actually need.',
-    },
-  ]
+function focusHeroEmail(heroEmailRef) {
+  heroEmailRef.current?.focus()
+  heroEmailRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
 
-  const backgroundNodes = [
-    { id: 'orb-1', size: 360, top: '6%', left: '-8%', duration: 24 },
-    { id: 'orb-2', size: 280, top: '68%', left: '10%', duration: 28 },
-    { id: 'orb-3', size: 420, top: '32%', left: '72%', duration: 32 },
-    { id: 'orb-4', size: 240, top: '80%', left: '62%', duration: 26 },
-  ]
+export default function App() {
+  const heroEmailRef = useRef(null)
+  const wlEmailRef = useRef(null)
+
+  const [rowCount, setRowCount] = useState(null)
+  const [extraAfterSuccess, setExtraAfterSuccess] = useState(0)
+
+  const [heroEmail, setHeroEmail] = useState('')
+  const [wlEmail, setWlEmail] = useState('')
+
+  const [heroSuccess, setHeroSuccess] = useState(false)
+  const [wlSuccess, setWlSuccess] = useState(false)
+
+  const [heroError, setHeroError] = useState('')
+  const [wlError, setWlError] = useState('')
+
+  const [heroSubmitting, setHeroSubmitting] = useState(false)
+  const [wlSubmitting, setWlSubmitting] = useState(false)
 
   useEffect(() => {
-    const animated = document.querySelectorAll('[data-animate]')
+    let cancelled = false
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible')
-          }
-        })
-      },
-      {
-        threshold: 0.25,
-        rootMargin: '0px 0px -10% 0px',
-      },
-    )
+    async function loadCount() {
+      if (!supabase) {
+        return
+      }
 
-    animated.forEach((element) => observer.observe(element))
+      const { count, error } = await supabase
+        .from('waitlist_signups')
+        .select('*', { count: 'exact', head: true })
+
+      if (cancelled) {
+        return
+      }
+
+      if (!error && typeof count === 'number') {
+        setRowCount(count)
+      }
+    }
+
+    loadCount()
 
     return () => {
-      animated.forEach((element) => observer.unobserve(element))
-      observer.disconnect()
+      cancelled = true
     }
   }, [])
 
-  const handleSubmit = async (event) => {
-    event.preventDefault()
+  const countStrong = formatFlooredPlus((rowCount ?? 100) + extraAfterSuccess)
 
-    const trimmedEmail = email.trim()
-    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)
-
-    if (!isValidEmail) {
-      setError('Enter a valid email address.')
-      setStatus('idle')
-      return
-    }
-
-    setError('')
-    if (!supabase) {
-      setStatus('idle')
-      setError('Supabase client is not configured. Please check your environment variables.')
-      return
-    }
-
-    setStatus('loading')
-
+  /**
+   * Same Supabase contract as legacy `handleSubmit`: `waitlist_signups` insert,
+   * lowercased email, `23505` duplicate branch, try/catch + console.error on failure.
+   */
+  async function insertWaitlistSignup(trimmedEmail) {
     try {
       const { error: insertError } = await supabase.from('waitlist_signups').insert({
         email: trimmedEmail.toLowerCase(),
@@ -122,279 +84,385 @@ function App() {
 
       if (insertError) {
         if (insertError.code === '23505') {
-          setStatus('idle')
-          setError('Looks like you’re already on the list!')
-          return
+          return { ok: false, reason: 'duplicate' }
         }
-
         throw insertError
       }
 
-      setStatus('success')
-      setEmail('')
+      return { ok: true }
     } catch (submitError) {
       console.error('Failed to add email to waitlist:', submitError)
-      setStatus('idle')
-      setError('Something went wrong submitting the form. Please try again in a moment.')
+      return { ok: false, reason: 'generic' }
     }
   }
 
+  const onHeroSubmit = async (e) => {
+    e.preventDefault()
+
+    const trimmedEmail = heroEmail.trim()
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setHeroError(MSG_INVALID_EMAIL)
+      return
+    }
+
+    setHeroError('')
+    if (!supabase) {
+      setHeroError(MSG_SUPABASE_MISSING)
+      return
+    }
+
+    setHeroSubmitting(true)
+    const result = await insertWaitlistSignup(trimmedEmail)
+    setHeroSubmitting(false)
+
+    if (result.ok) {
+      setHeroSuccess(true)
+      setHeroEmail('')
+      setExtraAfterSuccess((n) => n + 1)
+      return
+    }
+
+    if (result.reason === 'duplicate') {
+      setHeroError(MSG_ALREADY_ON_LIST)
+      return
+    }
+    setHeroError(MSG_SUBMIT_FAILED)
+  }
+
+  const onWlSubmit = async (e) => {
+    e.preventDefault()
+
+    const trimmedEmail = wlEmail.trim()
+    if (!EMAIL_REGEX.test(trimmedEmail)) {
+      setWlError(MSG_INVALID_EMAIL)
+      return
+    }
+
+    setWlError('')
+    if (!supabase) {
+      setWlError(MSG_SUPABASE_MISSING)
+      return
+    }
+
+    setWlSubmitting(true)
+    const result = await insertWaitlistSignup(trimmedEmail)
+    setWlSubmitting(false)
+
+    if (result.ok) {
+      setWlSuccess(true)
+      setWlEmail('')
+      setExtraAfterSuccess((n) => n + 1)
+      return
+    }
+
+    if (result.reason === 'duplicate') {
+      setWlError(MSG_ALREADY_ON_LIST)
+      return
+    }
+    setWlError(MSG_SUBMIT_FAILED)
+  }
+
   return (
-    <div className="page">
-      <div className="motion-bg" aria-hidden="true">
-        <video
-          className="motion-bg__video"
-          src="/videos/1105127_1080p_Shop_1920x1080.mov"
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="auto"
-        />
-        <div className="motion-bg__scanlines" />
-        <div className="motion-bg__grid" />
-        {backgroundNodes.map((node) => (
-          <div
-            key={node.id}
-            className="motion-bg__orb"
-            style={{
-              '--size': `${node.size}px`,
-              '--top': node.top,
-              '--left': node.left,
-              '--duration': `${node.duration}s`,
-            }}
-          />
-        ))}
-      </div>
+    <>
+      <nav>
+        <span className="nav-logo">Reasi</span>
+        <div className="nav-links">
+          <a href="#how">How it works</a>
+          <a href="#waitlist">Features</a>
+        </div>
+        <div className="nav-right">
+          <button type="button" className="nav-login">
+            Log in
+          </button>
+          <button
+            type="button"
+            className="nav-cta"
+            onClick={() => focusHeroEmail(heroEmailRef)}
+          >
+            Join waitlist
+          </button>
+        </div>
+      </nav>
 
-      <main className="main">
-        <section className="hero container reveal" data-animate>
-          <div className="hero__logo-mark">
-            <img src="/logos/Logo.png" alt="Reasi logo" />
-            <span>Reasi</span>
-          </div>
-          <span className="hero__accent" aria-hidden="true" />
-          <span className="hero__accent hero__accent--secondary" aria-hidden="true" />
-          <h1 className="hero__title">Never get lost in the supermarket again.</h1>
-          <p className="hero__eyebrow">Ask anything. Find it instantly.</p>
-          <p className="hero__subtitle">
-            REASI AI is your in‑store supermarket companion that knows every aisle, every shelf, and every
-            corner. Just describe what you’re looking for in natural language and it tells you exactly
-            where to go—down to the aisle, bay, and section.
+      <section className="hero">
+        <div className="hero-left">
+          <p className="hero-eyebrow">AI grocery assistant · Australia</p>
+          <h1>
+            One plan,
+            <br />
+            every shop.
+          </h1>
+          <p className="hero-desc">
+            Reasi handles your entire grocery workflow. From weekly meal planning to building your Woolworths or Coles cart automatically.
           </p>
-          <div className="hero__scroll" aria-hidden="true">
-            <span>Scroll for the walkthrough</span>
-            <div className="hero__scroll-indicator" />
-          </div>
 
-          <form className="waitlist" onSubmit={handleSubmit} data-animate>
-            <label className="sr-only" htmlFor="email">
-              Email address
-            </label>
+          <form
+            className="hero-form"
+            onSubmit={onHeroSubmit}
+            style={{ display: heroSuccess ? 'none' : 'flex' }}
+          >
             <input
-              id="email"
+              ref={heroEmailRef}
+              className="hero-email"
               type="email"
               name="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(event) => {
-                setEmail(event.target.value)
-                if (error) setError('')
+              placeholder="your@email.com"
+              autoComplete="email"
+              value={heroEmail}
+              disabled={heroSubmitting}
+              onChange={(e) => {
+                setHeroEmail(e.target.value)
+                if (heroError) setHeroError('')
               }}
-              aria-invalid={error ? 'true' : 'false'}
-              aria-describedby={error ? 'email-error' : undefined}
-              required
             />
-            <button type="submit" disabled={status === 'loading'}>
-              {status === 'success'
-                ? 'Added to waitlist'
-                : status === 'loading'
-                  ? 'Joining...'
-                  : 'Join the waitlist'}
+            <button type="submit" className="hero-btn" disabled={heroSubmitting}>
+              Get early access
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
             </button>
           </form>
-
-          {error && (
-            <p id="email-error" className="waitlist__feedback waitlist__feedback--error">
-              {error}
-            </p>
-          )}
-          {status === 'success' && !error && (
-            <p className="waitlist__feedback">We’ll be in touch when REASI AI is ready for you.</p>
-          )}
-          {status !== 'success' && !error && (
-            <p className="waitlist__microcopy">No spam, no fees, early access only.</p>
-          )}
-        </section>
-
-        <section className="demo container reveal" data-animate>
-          <div className="demo__copy">
-            <h2>See your in‑store co‑pilot in action.</h2>
-            <p>
-              Watch REASI AI turn a messy grocery run into a calm, guided walkthrough—every question from
-              “where’s the tahini?” to “what’s a quick gluten‑free dinner?” answered in seconds. It feels
-              less like using an app, and more like talking to the one store staff member who knows
-              everything.
-            </p>
-          </div>
-
-          <div className="demo__phone">
-            <div className="demo__status-bar">
-              <span>Reasi Assistant</span>
-              <span className="demo__status-dot" />
-            </div>
-            <div className="demo__screen">
-              {demoMessages.map((message, index) => (
-                <div
-                  key={`${message.from}-${index}`}
-                  className={`demo__bubble demo__bubble--${message.from}`}
-                  style={{ '--delay': `${index * 0.08}s` }}
-                >
-                  <p>{message.text}</p>
-                </div>
-              ))}
-            </div>
-            <div className="demo__input-bar">
-              <span>Ask Reasi anything about this store…</span>
-            </div>
-          </div>
-        </section>
-
-        <section className="metrics container" aria-label="Pilot highlights" data-animate>
-          {metrics.map((metric, index) => (
-            <article
-              key={metric.label}
-              className="reveal"
-              data-animate
-              style={{ '--delay': `${index * 0.08}s` }}
-            >
-              <h3>{metric.value}</h3>
-              <p>{metric.label}</p>
-              <span>{metric.detail}</span>
-            </article>
-          ))}
-        </section>
-
-        <section className="divider" aria-hidden="true" data-animate>
-          <div />
-        </section>
-
-        <section className="features container reveal" data-animate>
-          <h2 className="features__title">REASI AI turns the supermarket into a place that finally makes sense.</h2>
-          <p className="features__intro">
-            Ask in your own words, and REASI AI responds with conversational answers, aisle‑accurate
-            directions, and an iOS‑style map that feels familiar from the first use. No more hunting through
-            categories or guessing where things “should” be.
+          {heroError && <p className="form-inline-error">{heroError}</p>}
+          <p
+            className="hero-form-note"
+            id="hero-note"
+            style={{ display: heroSuccess ? 'none' : 'block' }}
+          >
+            Launching in Australia. No spam, unsubscribe any time.
           </p>
-          <ul className="features__list">
-            <li>
-              <span>Ask naturally (voice or text)</span>
-              <p>Speak or type like you would to a friend—no rigid keywords or menus.</p>
-            </li>
-            <li>
-              <span>Aisle‑accurate directions</span>
-              <p>Get precise guidance inside the store, not just “somewhere in aisle 7”.</p>
-            </li>
-            <li>
-              <span>Visual map navigation</span>
-              <p>Follow a clean, phone‑native route that minimizes backtracking and dead ends.</p>
-            </li>
-            <li>
-              <span>Real‑time product info</span>
-              <p>Check variants, availability, and key details before you even walk to the shelf.</p>
-            </li>
-            <li>
-              <span>Smart alternatives &amp; healthier suggestions</span>
-              <p>Discover swaps that match your budget, health goals, and dietary needs.</p>
-            </li>
-            <li>
-              <span>Works in major supermarkets</span>
-              <p>Designed to plug into leading supermarket chains so your experience travels with you.</p>
-            </li>
-          </ul>
-        </section>
 
-        <section className="flow container reveal" data-animate>
-          <div className="flow__header">
-            <h2>How REASI AI fits into your shop.</h2>
-            <p>
-              Shop with a simple, reassuring flow: describe your mission once and let REASI AI handle the
-              locating, routing, and smart suggestions while you stay present in the aisle.
-            </p>
+          <div className="hero-success" id="hero-success" style={{ display: heroSuccess ? 'block' : 'none' }}>
+            <div className="hs-inner">
+              <div className="hs-check">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <div className="hs-text">
+                <h4>You&apos;re on the list.</h4>
+                <p>We&apos;ll be in touch when Reasi launches in Australia.</p>
+              </div>
+            </div>
           </div>
-          <div className="flow__steps">
-            {flowSteps.map((step, index) => (
-              <article key={step.title} className="flow__step" data-animate style={{ '--delay': `${index * 0.1}s` }}>
-                <span className="flow__index">{index + 1}</span>
-                <h3>{step.title}</h3>
-                <p>{step.description}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="story container reveal" data-animate>
-          <div className="story__content">
-            <h2>The aisle hunt shouldn’t be this hard.</h2>
-            <p>
-              You walk in for “just a few things” and end up pacing aisles, backtracking, and squinting at
-              signs that never quite match what’s in your head. Products move, layouts change, each store
-              has its own secret logic, and simple questions like “where’s the coconut milk?” turn into
-              five‑minute detours. It’s a weekly time tax that quietly drains energy from already busy
-              days—and it shouldn’t be on you to memorize every shelf.
-            </p>
-          </div>
-
-          <blockquote className="story__quote">
-            <p>
-              “I asked for ‘kid‑friendly snacks under five bucks’ and it walked me straight to a promo I
-              would’ve never spotted. That alone saved me a lap.”
-            </p>
-            <cite>— Maya, parent of two, pilot family of four</cite>
-          </blockquote>
-        </section>
-
-        <section className="perks container reveal" data-animate>
-          <h2>Why join the waitlist now.</h2>
-          <ul>
-            <li>
-              <span>Early beta access</span>
-              <p>Be among the first shoppers to use REASI AI in real supermarkets as we roll out.</p>
-            </li>
-            <li>
-              <span>Shape the product</span>
-              <p>Vote on features, share feedback, and influence what we build next.</p>
-            </li>
-            <li>
-              <span>Insider updates</span>
-              <p>Get behind‑the‑scenes progress, launch timelines, and store rollout news.</p>
-            </li>
-            <li>
-              <span>Founding member perks</span>
-              <p>Enjoy recognition and benefits reserved for our earliest supporters.</p>
-            </li>
-          </ul>
-        </section>
-
-        <section className="social container reveal" data-animate>
-          <h2>Built by people who know supermarkets and AI.</h2>
-          <p>
-            REASI AI is created by people who’ve worked inside supermarkets and on cutting‑edge AI systems.
-            We test with real shoppers doing real weekly shops—families, students, and busy professionals—to
-            refine every interaction. Under the hood, REASI AI combines store‑level data with advanced
-            language models to understand your intent and translate it into precise, in‑store actions.
-          </p>
-        </section>
-      </main>
-
-      <footer className="footer">
-        <div className="container footer__inner" data-animate>
-          <span>Built with ❤️ in Australia.</span>
-          <span>© 2025 REASI AI.</span>
         </div>
+
+        <div className="hero-right">
+          <div className="float-card">
+            <div className="fc-label">Your meals</div>
+            <div className="fc-meal">
+              <div className="fc-day">Monday</div>
+              <div className="fc-name">Thai Green Curry</div>
+              <div className="fc-tags">
+                <span className="fc-tag">$12.50</span>
+                <span className="fc-tag">25 min</span>
+              </div>
+            </div>
+            <div className="fc-meal">
+              <div className="fc-day">Tuesday</div>
+              <div className="fc-name">Salmon with Greens</div>
+              <div className="fc-tags">
+                <span className="fc-tag">$14.80</span>
+                <span className="fc-tag">20 min</span>
+              </div>
+            </div>
+            <div className="fc-meal">
+              <div className="fc-day">Wednesday</div>
+              <div className="fc-name">Shakshuka</div>
+              <div className="fc-tags">
+                <span className="fc-tag">$8.00</span>
+                <span className="fc-tag">25 min</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="phone">
+            <div className="phone-status">
+              <span className="phone-time">9:41</span>
+              <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                <svg width="13" height="10" viewBox="0 0 17 12" fill="#0a0a0a">
+                  <rect x="0" y="3" width="3" height="9" rx="1" />
+                  <rect x="4.5" y="2" width="3" height="10" rx="1" />
+                  <rect x="9" y="0" width="3" height="12" rx="1" />
+                  <rect x="13.5" y="1" width="3" height="11" rx="1" />
+                </svg>
+                <svg width="19" height="10" viewBox="0 0 25 12" fill="none">
+                  <rect x="0.5" y="0.5" width="21" height="11" rx="3.5" stroke="#0a0a0a" strokeOpacity="0.3" />
+                  <rect x="2" y="2" width="14" height="8" rx="2" fill="#0a0a0a" />
+                  <path d="M23 4.5v3a2 2 0 000-3z" fill="#0a0a0a" fillOpacity="0.4" />
+                </svg>
+              </div>
+            </div>
+            <div className="phone-screen">
+              <div className="app-header">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" strokeWidth="1.75">
+                  <path d="M19 12H5M12 19l-7-7 7-7" />
+                </svg>
+                <div className="app-title">This week</div>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0a0a0a" strokeWidth="1.75">
+                  <circle cx="18" cy="5" r="3" />
+                  <circle cx="6" cy="12" r="3" />
+                  <circle cx="18" cy="19" r="3" />
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                </svg>
+              </div>
+              <div className="app-cost-row">
+                <span className="app-cost-label">Estimated total</span>
+                <span className="app-cost-val">$68.40</span>
+              </div>
+              <div className="app-sl">Meat &amp; Seafood</div>
+              <div className="app-item">
+                <div className="app-check done">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <span className="app-item-name done">Chicken thighs</span>
+                <span className="app-item-qty">600 g</span>
+              </div>
+              <div className="app-item">
+                <div className="app-check" />
+                <span className="app-item-name">Atlantic salmon</span>
+                <span className="app-item-qty">400 g</span>
+              </div>
+              <div className="app-item">
+                <div className="app-check" />
+                <span className="app-item-name">Beef mince</span>
+                <span className="app-item-qty">500 g</span>
+              </div>
+              <div className="app-sl">Produce</div>
+              <div className="app-item">
+                <div className="app-check done">
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+                <span className="app-item-name done">Broccolini</span>
+                <span className="app-item-qty">1 bunch</span>
+              </div>
+              <div className="app-item">
+                <div className="app-check" />
+                <span className="app-item-name">Cherry tomatoes</span>
+                <span className="app-item-qty">250 g</span>
+              </div>
+              <div className="app-item">
+                <div className="app-check" />
+                <span className="app-item-name">Lime</span>
+                <span className="app-item-qty">3</span>
+              </div>
+              <div className="app-sl">Pantry</div>
+              <div className="app-item">
+                <div className="app-check" />
+                <span className="app-item-name">Coconut milk</span>
+                <span className="app-item-qty">400 ml</span>
+              </div>
+              <div className="app-item">
+                <div className="app-check" />
+                <span className="app-item-name">Jasmine rice</span>
+                <span className="app-item-qty">2 cups</span>
+              </div>
+              <div className="app-footer">
+                <div className="app-btn">
+                  View recipes
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="waitlist-bar" id="waitlist">
+        <p className="wl-count">
+          Join <strong id="count-num">{countStrong}</strong> others on the waitlist.
+        </p>
+        <div
+          id="wl-form-wrap"
+          style={{
+            display: wlSuccess ? 'none' : 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: '100%',
+          }}
+        >
+          <form className="wl-form" onSubmit={onWlSubmit}>
+            <input
+              ref={wlEmailRef}
+              className="wl-email"
+              type="email"
+              name="email"
+              placeholder="your@email.com"
+              autoComplete="email"
+              value={wlEmail}
+              disabled={wlSubmitting}
+              onChange={(e) => {
+                setWlEmail(e.target.value)
+                if (wlError) setWlError('')
+              }}
+            />
+            <button type="submit" className="wl-btn" disabled={wlSubmitting}>
+              Join now
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          </form>
+          {wlError && <p className="form-inline-error">{wlError}</p>}
+        </div>
+        <div className="wl-success" id="wl-success" style={{ display: wlSuccess ? 'flex' : 'none' }}>
+          <div className="wls-check">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h3>You&apos;re on the list.</h3>
+          <p>We&apos;ll be in touch when Reasi launches in Australia.</p>
+        </div>
+        <p className="wl-fine">No spam. Unsubscribe any time.</p>
+      </div>
+
+      <section className="how-section" id="how">
+        <div className="how-inner">
+          <p className="how-label">How it works</p>
+          <div className="steps-grid">
+            <div className="step-item">
+              <div className="step-n">01</div>
+              <div className="step-title">Plan your meals</div>
+              <div className="step-desc">
+                Tell Reasi how you eat and what you&apos;re craving. Get a tailored weekly meal plan with recipes in one tap.
+              </div>
+            </div>
+            <div className="step-item">
+              <div className="step-n">02</div>
+              <div className="step-title">Build your list</div>
+              <div className="step-desc">
+                Your shopping list is generated automatically. Organised by aisle, with cost estimates included.
+              </div>
+            </div>
+            <div className="step-item">
+              <div className="step-n">03</div>
+              <div className="step-title">Automate your cart</div>
+              <div className="step-desc">
+                Reasi adds everything to your Woolworths or Coles cart. Ready to checkout in seconds, not minutes.
+              </div>
+            </div>
+            <div className="step-item">
+              <div className="step-n">04</div>
+              <div className="step-title">Navigate the store</div>
+              <div className="step-desc">
+                Shopping in person? Get aisle-by-aisle guidance so you move through the store fast and forget nothing.
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <span className="footer-word">Reasi</span>
+        <span className="footer-copy">© 2025 Reasi AI · Australia</span>
       </footer>
-    </div>
+    </>
   )
 }
-
-export default App

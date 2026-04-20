@@ -2,6 +2,23 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "installCommand": "npm install",
-  "framework": "vite"
+  "framework": "vite",
+  "headers": [
+    {
+      "source": "/videos/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/videos/(.*)",
+      "destination": "/videos/$1"
+    }
+  ]
 }
 
