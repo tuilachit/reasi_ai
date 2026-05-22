@@ -12,7 +12,7 @@ const MSG_ALREADY_ON_LIST = "Looks like you're already on the list!"
 const MSG_SUBMIT_FAILED =
   'Something went wrong submitting the form. Please try again in a moment.'
 
-/** Baseline signups when offline, loading, or count query fails (100 real people already). */
+/** Baseline signups shown before adding live rows from Supabase. */
 const DEFAULT_WAITLIST_COUNT = 100
 
 function formatFlooredPlus(count) {
@@ -20,8 +20,7 @@ function formatFlooredPlus(count) {
   if (!Number.isFinite(n) || n < 0) {
     return '0+'
   }
-  const floored = Math.floor(n / 10) * 10
-  return `${floored}+`
+  return `${Math.floor(n)}+`
 }
 
 function focusHeroEmail(heroEmailRef) {
@@ -75,7 +74,7 @@ export default function App() {
 
       const n = typeof count === 'string' ? parseInt(count, 10) : count
       if (Number.isFinite(n)) {
-        setRowCount(n)
+        setRowCount(DEFAULT_WAITLIST_COUNT + n)
       } else {
         setRowCount(DEFAULT_WAITLIST_COUNT)
       }
