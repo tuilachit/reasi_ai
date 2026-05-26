@@ -266,6 +266,9 @@ export default function App() {
           <p className="hero-desc">
             The only app you need for grocery shopping. Reasi plans meals, builds your list, finds smarter swaps, and gets your shop ready before you even think about it.
           </p>
+          <p className="hero-desc-short">
+            Your grocery agent. Meals, list, swaps, and checkout-ready shopping in one flow.
+          </p>
 
           <form
             className="hero-form"
