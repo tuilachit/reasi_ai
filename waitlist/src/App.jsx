@@ -11,6 +11,7 @@ const MSG_SUPABASE_MISSING =
 const MSG_ALREADY_ON_LIST = "Looks like you're already on the list!"
 const MSG_SUBMIT_FAILED =
   'Something went wrong submitting the form. Please try again in a moment.'
+const MSG_SHOP_LOCATION_REQUIRED = 'Tell us your weekly supermarket and suburb.'
 
 /** Baseline signups shown before adding live rows from Supabase. */
 const DEFAULT_WAITLIST_COUNT = 100
@@ -37,6 +38,10 @@ export default function App() {
 
   const [heroEmail, setHeroEmail] = useState('')
   const [wlEmail, setWlEmail] = useState('')
+  const [heroSupermarket, setHeroSupermarket] = useState('')
+  const [heroSuburb, setHeroSuburb] = useState('')
+  const [wlSupermarket, setWlSupermarket] = useState('')
+  const [wlSuburb, setWlSuburb] = useState('')
 
   const [heroSuccess, setHeroSuccess] = useState(false)
   const [wlSuccess, setWlSuccess] = useState(false)
@@ -56,11 +61,7 @@ export default function App() {
         return
       }
 
-      // Prefer a concrete column: `select('*', { count })` can return null count under RLS
-      // when no row-level SELECT is allowed for `*`.
-      const { count, error } = await supabase
-        .from('waitlist_signups')
-        .select('email', { count: 'exact', head: true })
+      const { data, error } = await supabase.rpc('get_waitlist_signup_count')
 
       if (cancelled) {
         return
@@ -72,7 +73,7 @@ export default function App() {
         return
       }
 
-      const n = typeof count === 'string' ? parseInt(count, 10) : count
+      const n = typeof data === 'string' ? parseInt(data, 10) : data
       if (Number.isFinite(n)) {
         setRowCount(DEFAULT_WAITLIST_COUNT + n)
       } else {
@@ -128,10 +129,12 @@ export default function App() {
    * Same Supabase contract as legacy `handleSubmit`: `waitlist_signups` insert,
    * lowercased email, `23505` duplicate branch, try/catch + console.error on failure.
    */
-  async function insertWaitlistSignup(trimmedEmail) {
+  async function insertWaitlistSignup(trimmedEmail, weeklySupermarket, weeklySuburb) {
     try {
       const { error: insertError } = await supabase.from('waitlist_signups').insert({
         email: trimmedEmail.toLowerCase(),
+        weekly_supermarket: weeklySupermarket,
+        weekly_suburb: weeklySuburb,
       })
 
       if (insertError) {
@@ -152,8 +155,15 @@ export default function App() {
     e.preventDefault()
 
     const trimmedEmail = heroEmail.trim()
+    const trimmedSupermarket = heroSupermarket.trim()
+    const trimmedSuburb = heroSuburb.trim()
     if (!EMAIL_REGEX.test(trimmedEmail)) {
       setHeroError(MSG_INVALID_EMAIL)
+      return
+    }
+
+    if (!trimmedSupermarket || !trimmedSuburb) {
+      setHeroError(MSG_SHOP_LOCATION_REQUIRED)
       return
     }
 
@@ -164,12 +174,14 @@ export default function App() {
     }
 
     setHeroSubmitting(true)
-    const result = await insertWaitlistSignup(trimmedEmail)
+    const result = await insertWaitlistSignup(trimmedEmail, trimmedSupermarket, trimmedSuburb)
     setHeroSubmitting(false)
 
     if (result.ok) {
       setHeroSuccess(true)
       setHeroEmail('')
+      setHeroSupermarket('')
+      setHeroSuburb('')
       setExtraAfterSuccess((n) => n + 1)
       return
     }
@@ -185,8 +197,15 @@ export default function App() {
     e.preventDefault()
 
     const trimmedEmail = wlEmail.trim()
+    const trimmedSupermarket = wlSupermarket.trim()
+    const trimmedSuburb = wlSuburb.trim()
     if (!EMAIL_REGEX.test(trimmedEmail)) {
       setWlError(MSG_INVALID_EMAIL)
+      return
+    }
+
+    if (!trimmedSupermarket || !trimmedSuburb) {
+      setWlError(MSG_SHOP_LOCATION_REQUIRED)
       return
     }
 
@@ -197,12 +216,14 @@ export default function App() {
     }
 
     setWlSubmitting(true)
-    const result = await insertWaitlistSignup(trimmedEmail)
+    const result = await insertWaitlistSignup(trimmedEmail, trimmedSupermarket, trimmedSuburb)
     setWlSubmitting(false)
 
     if (result.ok) {
       setWlSuccess(true)
       setWlEmail('')
+      setWlSupermarket('')
+      setWlSuburb('')
       setExtraAfterSuccess((n) => n + 1)
       return
     }
@@ -219,8 +240,8 @@ export default function App() {
       <nav className="nav-reveal">
         <span className="nav-logo">Reasi</span>
         <div className="nav-links">
-          <a href="#how">How it works</a>
-          <a href="#waitlist">Features</a>
+          <a href="#how">Product</a>
+          <a href="#waitlist">Waitlist</a>
         </div>
         <div className="nav-right">
           <button type="button" className="nav-login">
@@ -238,14 +259,12 @@ export default function App() {
 
       <section className="hero">
         <div className="hero-left">
-          <p className="hero-eyebrow">AI grocery assistant · Australia</p>
+          <p className="hero-eyebrow">Your grocery AI agent</p>
           <h1>
-            One plan,
-            <br />
-            every shop.
+            Reasi
           </h1>
           <p className="hero-desc">
-            Reasi handles your entire grocery workflow. From weekly meal planning to building your Woolworths or Coles cart automatically.
+            The only app you need for grocery shopping. Reasi plans meals, builds your list, finds smarter swaps, and gets your shop ready before you even think about it.
           </p>
 
           <form
@@ -253,26 +272,56 @@ export default function App() {
             onSubmit={onHeroSubmit}
             style={{ display: heroSuccess ? 'none' : 'flex' }}
           >
-            <input
-              ref={heroEmailRef}
-              className="hero-email"
-              type="email"
-              name="email"
-              placeholder="your@email.com"
-              autoComplete="email"
-              value={heroEmail}
-              disabled={heroSubmitting}
-              onChange={(e) => {
-                setHeroEmail(e.target.value)
-                if (heroError) setHeroError('')
-              }}
-            />
-            <button type="submit" className="hero-btn" disabled={heroSubmitting}>
-              Get early access
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </button>
+            <div className="form-primary-row">
+              <input
+                ref={heroEmailRef}
+                className="hero-email"
+                type="email"
+                name="email"
+                placeholder="your@email.com"
+                autoComplete="email"
+                value={heroEmail}
+                disabled={heroSubmitting}
+                onChange={(e) => {
+                  setHeroEmail(e.target.value)
+                  if (heroError) setHeroError('')
+                }}
+              />
+              <button type="submit" className="hero-btn" disabled={heroSubmitting}>
+                Get early access
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            <div className="shop-location-fields" aria-label="Weekly grocery shop location">
+              <input
+                className="shop-location-input"
+                type="text"
+                name="weekly_supermarket"
+                placeholder="Supermarket"
+                autoComplete="organization"
+                value={heroSupermarket}
+                disabled={heroSubmitting}
+                onChange={(e) => {
+                  setHeroSupermarket(e.target.value)
+                  if (heroError) setHeroError('')
+                }}
+              />
+              <input
+                className="shop-location-input"
+                type="text"
+                name="weekly_suburb"
+                placeholder="Suburb"
+                autoComplete="address-level2"
+                value={heroSuburb}
+                disabled={heroSubmitting}
+                onChange={(e) => {
+                  setHeroSuburb(e.target.value)
+                  if (heroError) setHeroError('')
+                }}
+              />
+            </div>
           </form>
           {heroError && <p className="form-inline-error">{heroError}</p>}
           <p
@@ -280,8 +329,19 @@ export default function App() {
             id="hero-note"
             style={{ display: heroSuccess ? 'none' : 'block' }}
           >
-            Launching in Australia. No spam, unsubscribe any time.
+            Get early access before everyone else starts shopping this way.
           </p>
+
+          <div className="hero-metrics" aria-label="Reasi launch details">
+            <div>
+              <span>Agent</span>
+              <strong>Plans everything</strong>
+            </div>
+            <div>
+              <span>Flow</span>
+              <strong>Idea to checkout</strong>
+            </div>
+          </div>
 
           <div className="hero-success" id="hero-success" style={{ display: heroSuccess ? 'block' : 'none' }}>
             <div className="hs-inner">
@@ -292,13 +352,18 @@ export default function App() {
               </div>
               <div className="hs-text">
                 <h4>You&apos;re on the list.</h4>
-                <p>We&apos;ll be in touch when Reasi launches in Australia.</p>
+                <p>We&apos;ll be in touch when your grocery agent is ready.</p>
               </div>
             </div>
           </div>
         </div>
 
         <div className="hero-right">
+          <div className="canvas-topline">
+            <span>Reasi beta</span>
+            <strong>Your shop is handled</strong>
+          </div>
+
           <div className="float-card-float-anchor">
             <div className="float-card">
             <div className="fc-label">Your meals</div>
@@ -326,6 +391,17 @@ export default function App() {
                 <span className="fc-tag">25 min</span>
               </div>
             </div>
+            </div>
+          </div>
+
+          <div className="cart-card">
+            <div className="cart-card__top">
+              <span>Cart</span>
+              <strong>$68.40</strong>
+            </div>
+            <div className="cart-card__store">
+              <span>Checkout ready</span>
+              <small>18 items handled</small>
             </div>
           </div>
 
@@ -444,26 +520,56 @@ export default function App() {
           }}
         >
           <form className="wl-form" onSubmit={onWlSubmit}>
-            <input
-              ref={wlEmailRef}
-              className="wl-email"
-              type="email"
-              name="email"
-              placeholder="your@email.com"
-              autoComplete="email"
-              value={wlEmail}
-              disabled={wlSubmitting}
-              onChange={(e) => {
-                setWlEmail(e.target.value)
-                if (wlError) setWlError('')
-              }}
-            />
-            <button type="submit" className="wl-btn" disabled={wlSubmitting}>
-              Join now
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </button>
+            <div className="form-primary-row">
+              <input
+                ref={wlEmailRef}
+                className="wl-email"
+                type="email"
+                name="email"
+                placeholder="your@email.com"
+                autoComplete="email"
+                value={wlEmail}
+                disabled={wlSubmitting}
+                onChange={(e) => {
+                  setWlEmail(e.target.value)
+                  if (wlError) setWlError('')
+                }}
+              />
+              <button type="submit" className="wl-btn" disabled={wlSubmitting}>
+                Join now
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            <div className="shop-location-fields" aria-label="Weekly grocery shop location">
+              <input
+                className="shop-location-input"
+                type="text"
+                name="weekly_supermarket"
+                placeholder="Supermarket"
+                autoComplete="organization"
+                value={wlSupermarket}
+                disabled={wlSubmitting}
+                onChange={(e) => {
+                  setWlSupermarket(e.target.value)
+                  if (wlError) setWlError('')
+                }}
+              />
+              <input
+                className="shop-location-input"
+                type="text"
+                name="weekly_suburb"
+                placeholder="Suburb"
+                autoComplete="address-level2"
+                value={wlSuburb}
+                disabled={wlSubmitting}
+                onChange={(e) => {
+                  setWlSuburb(e.target.value)
+                  if (wlError) setWlError('')
+                }}
+              />
+            </div>
           </form>
           {wlError && <p className="form-inline-error">{wlError}</p>}
         </div>
@@ -474,7 +580,7 @@ export default function App() {
             </svg>
           </div>
           <h3>You&apos;re on the list.</h3>
-          <p>We&apos;ll be in touch when Reasi launches in Australia.</p>
+          <p>We&apos;ll be in touch when your grocery agent is ready.</p>
         </div>
         <p className="wl-fine">No spam. Unsubscribe any time.</p>
       </div>
@@ -482,43 +588,63 @@ export default function App() {
       <section className="how-section" id="how">
         <div className="how-inner">
           <p className="how-label reveal reveal--fade" data-reveal-ratio="0.6">
-            How it works
+            The grocery loop is broken
           </p>
-          <div className="steps-grid">
+          <div className="story-layout">
+            <div className="story-sticky reveal" data-reveal-ratio="0.35">
+              <span className="story-kicker">Reasi agent</span>
+              <h2>From empty fridge to checkout-ready.</h2>
+              <p>
+                Grocery shopping is not one task. It is deciding what to eat, remembering what is missing, comparing options, and rebuilding the same cart again and again.
+              </p>
+              <div className="story-orbit" aria-hidden="true">
+                <span>Plan</span>
+                <span>List</span>
+                <span>Swap</span>
+                <span>Cart</span>
+              </div>
+            </div>
+            <div className="story-panels">
             {[
               {
                 n: '01',
-                title: 'Plan your meals',
-                desc: "Tell Reasi how you eat and what you're craving. Get a tailored weekly meal plan with recipes in one tap.",
+                title: 'You open the fridge and still have no plan.',
+                desc: 'Reasi learns what you actually eat, what you avoid, how much you want to spend, and what kind of week you are having. It turns that into meals you can realistically cook.',
+                result: 'A weekly plan that feels already decided.',
               },
               {
                 n: '02',
-                title: 'Build your list',
-                desc: 'Your shopping list is generated automatically. Organised by aisle, with cost estimates included.',
+                title: 'The list is always missing something.',
+                desc: 'Ingredients, pantry staples, quantities, repeats, and swaps are handled together. Reasi catches the tiny things people remember only after leaving the store.',
+                result: 'One list. No duplicate thinking.',
               },
               {
                 n: '03',
-                title: 'Automate your cart',
-                desc: 'Reasi adds everything to your Woolworths or Coles cart. Ready to checkout in seconds, not minutes.',
+                title: 'Checkout becomes the real work.',
+                desc: 'The agent prepares the shop, keeps the total visible, suggests better alternatives, and adapts when something is too expensive, unavailable, or not worth it.',
+                result: 'A cart that feels assembled for you.',
               },
               {
                 n: '04',
-                title: 'Navigate the store',
-                desc: 'Shopping in person? Get aisle-by-aisle guidance so you move through the store fast and forget nothing.',
+                title: 'Every week gets easier.',
+                desc: 'Reasi remembers what worked, what you skipped, what ran out, and what should come back next time. The grocery routine compounds instead of resetting.',
+                result: 'The only grocery app you keep opening.',
               },
             ].map((step, index) => (
               <div
                 key={step.n}
-                className="step-item reveal"
+                className="story-panel reveal"
                 data-reveal-ratio="0.8"
                 data-delay={index * 100}
                 style={{ transitionDelay: `${index * 100}ms` }}
               >
-                <div className="step-n">{step.n}</div>
-                <div className="step-title">{step.title}</div>
-                <div className="step-desc">{step.desc}</div>
+                <div className="story-panel__n">{step.n}</div>
+                <h3>{step.title}</h3>
+                <p>{step.desc}</p>
+                <strong>{step.result}</strong>
               </div>
             ))}
+            </div>
           </div>
         </div>
       </section>
