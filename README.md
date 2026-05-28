@@ -80,6 +80,4 @@ npm run build
 
 - Add a short architecture note for the future grocery-agent backend
 - Add unit tests for form validation and Supabase submission states
-- Add an `.env.example` file for faster local setup
 - Add screenshots or a short demo GIF to make the repo easier to review quickly
-
