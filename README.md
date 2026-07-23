@@ -1,83 +1,98 @@
 # Reasi AI
 
-Reasi AI is a product/waitlist site for an AI grocery agent. The product promise is simple: plan weekly meals, build the shopping list, suggest smarter swaps, and prepare the shop for human approval.
+Reasi AI is a product and waitlist experience for an AI grocery-planning agent. The product concept turns household preferences into weekly meals, consolidated shopping lists, budget-aware swaps, and a checkout plan that remains under human control.
 
-Live demo: https://reasi-ai.vercel.app
+[Live demo](https://reasi-ai.vercel.app)
 
-## Why This Project Matters
+## Product preview
 
-Most grocery apps stop at lists. Reasi frames grocery planning as an agent workflow: understand household preferences, generate meals, consolidate ingredients, suggest budget-aware swaps, and keep the user in control before checkout.
+| Meal planning | Shopping list | Shopping mode |
+| --- | --- | --- |
+| ![Meal planning screen](waitlist/public/reasi-app/meal-plan.png) | ![Shopping list screen](waitlist/public/reasi-app/shopping-list.png) | ![Shopping mode screen](waitlist/public/reasi-app/shopping-mode.png) |
 
-This repo currently contains the public waitlist/product experience used to validate demand and collect early users.
+## Current scope
 
-## Features
+This repository contains the public product and waitlist experience used to communicate the concept and validate demand. It is not yet the grocery-agent backend.
 
-- Responsive React product site with app-preview screens and animated sections
+Implemented features include:
+
+- Responsive React product site with animated sections and app-preview screens
 - Supabase-backed waitlist form with duplicate-email handling
-- Grocery-context inputs for supermarket and suburb
-- Vercel Analytics integration
-- Vercel deployment config
-- Clear product flow: plan, swap, list, shop, cook
+- Supermarket and suburb context captured with waitlist submissions
+- Vercel Analytics integration and Vercel deployment configuration
+- Mobile-first flow covering plan, swap, list, shop, and cook
 
-## Tech Stack
+## Architecture
 
-- React 19
-- Vite 7
-- Supabase
-- Framer Motion
-- Lucide React
-- Vercel Analytics
-- CSS modules/global CSS
-
-## Project Structure
-
-```text
-.
-+-- vercel.json
-+-- waitlist/
-    +-- public/
-    |   +-- logos/
-    |   +-- reasi-app/
-    +-- src/
-    |   +-- lib/supabaseClient.js
-    |   +-- App.jsx
-    |   +-- App.css
-    |   +-- index.css
-    |   +-- main.jsx
-    +-- package.json
-    +-- vite.config.js
+```mermaid
+flowchart LR
+    Visitor["Visitor"] --> UI["React 19 + Vite UI"]
+    UI --> Form["Waitlist form"]
+    Form --> Client["Supabase client"]
+    Client --> Database[("Supabase")]
+    UI --> Analytics["Vercel Analytics"]
+    Vercel["Vercel"] --> UI
 ```
 
-## Run Locally
+The browser uses the public Supabase client configuration supplied through Vite environment variables. Database policies remain the security boundary for waitlist writes.
+
+## Tech stack
+
+- React 19 and Vite 7
+- Supabase
+- Framer Motion and Lucide React
+- Vercel Analytics
+- CSS
+
+## Run locally
 
 ```bash
-cd waitlist
+git clone https://github.com/tuilachit/reasi_ai.git
+cd reasi_ai/waitlist
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-The app runs on the Vite dev server.
-
-## Environment
-
-Waitlist persistence uses Supabase. Add these variables in your local environment or Vercel project:
+Set the following values in `.env.local`:
 
 ```bash
 VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 ```
 
-If the variables are missing, the site still renders, but waitlist submissions are not persisted.
+The visual site still renders without these values, but waitlist submissions will not persist.
 
-## Build
+## Validate a production build
 
 ```bash
 cd waitlist
+npm run lint
 npm run build
 ```
 
-## What I Would Improve Next
+## Repository layout
 
-- Add a short architecture note for the future grocery-agent backend
-- Add unit tests for form validation and Supabase submission states
-- Add screenshots or a short demo GIF to make the repo easier to review quickly
+```text
+.
+├── vercel.json
+└── waitlist/
+    ├── public/
+    │   ├── logos/
+    │   └── reasi-app/
+    ├── src/
+    │   ├── lib/supabaseClient.js
+    │   ├── App.jsx
+    │   ├── App.css
+    │   ├── index.css
+    │   └── main.jsx
+    ├── .env.example
+    ├── package.json
+    └── vite.config.js
+```
+
+## Next engineering steps
+
+- Add automated tests for validation, duplicate-email handling, and Supabase failure states
+- Document the future grocery-agent backend and its human-approval boundary
+- Add an accessible end-to-end waitlist test against a disposable Supabase project
