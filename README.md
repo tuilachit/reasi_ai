@@ -63,13 +63,18 @@ VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
 
 The visual site still renders without these values, but waitlist submissions will not persist.
 
-## Validate a production build
+## Quality checks
 
 ```bash
 cd waitlist
 npm run lint
+npm run typecheck
+npm test
 npm run build
 ```
+
+GitHub Actions runs the same checks for pull requests and pushes to `main`. The tests cover the
+waitlist's input normalization, validation, and displayed signup-count formatting.
 
 ## Repository layout
 
@@ -81,7 +86,9 @@ npm run build
     │   ├── logos/
     │   └── reasi-app/
     ├── src/
-    │   ├── lib/supabaseClient.js
+    │   ├── lib/
+    │   │   ├── supabaseClient.js
+    │   │   └── waitlist.js
     │   ├── App.jsx
     │   ├── App.css
     │   ├── index.css
@@ -93,6 +100,6 @@ npm run build
 
 ## Next engineering steps
 
-- Add automated tests for validation, duplicate-email handling, and Supabase failure states
+- Add an integration test for duplicate-email and Supabase failure responses
 - Document the future grocery-agent backend and its human-approval boundary
 - Add an accessible end-to-end waitlist test against a disposable Supabase project

@@ -1,16 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import { supabase } from './lib/supabaseClient.js'
+import { formatFlooredPlus, validateWaitlistSignup } from './lib/waitlist.js'
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
-const MSG_INVALID_EMAIL = 'Enter a valid email address.'
 const MSG_SUPABASE_MISSING =
   'Supabase client is not configured. Please check your environment variables.'
 const MSG_ALREADY_ON_LIST = "Looks like you're already on the list!"
 const MSG_SUBMIT_FAILED =
   'Something went wrong submitting the form. Please try again in a moment.'
-const MSG_SHOP_LOCATION_REQUIRED = 'Tell us your weekly supermarket and suburb.'
 const DEFAULT_WAITLIST_COUNT = 100
 
 const lifecycleStages = [
@@ -101,14 +98,6 @@ const appScreens = [
     image: '/reasi-app/in-store-route.png',
   },
 ]
-
-function formatFlooredPlus(count) {
-  const n = Number(count)
-  if (!Number.isFinite(n) || n < 0) {
-    return '0+'
-  }
-  return `${Math.floor(n)}+`
-}
 
 function focusEmail(ref) {
   ref.current?.focus()
@@ -237,17 +226,14 @@ export default function App() {
   const onWlSubmit = async (e) => {
     e.preventDefault()
 
-    const trimmedEmail = wlEmail.trim()
-    const trimmedSupermarket = wlSupermarket.trim()
-    const trimmedSuburb = wlSuburb.trim()
+    const validation = validateWaitlistSignup({
+      email: wlEmail,
+      weeklySupermarket: wlSupermarket,
+      weeklySuburb: wlSuburb,
+    })
 
-    if (!EMAIL_REGEX.test(trimmedEmail)) {
-      setWlError(MSG_INVALID_EMAIL)
-      return
-    }
-
-    if (!trimmedSupermarket || !trimmedSuburb) {
-      setWlError(MSG_SHOP_LOCATION_REQUIRED)
+    if (!validation.ok) {
+      setWlError(validation.error)
       return
     }
 
@@ -257,8 +243,9 @@ export default function App() {
       return
     }
 
+    const { email, weeklySupermarket, weeklySuburb } = validation.value
     setWlSubmitting(true)
-    const result = await insertWaitlistSignup(trimmedEmail, trimmedSupermarket, trimmedSuburb)
+    const result = await insertWaitlistSignup(email, weeklySupermarket, weeklySuburb)
     setWlSubmitting(false)
 
     if (result.ok) {
