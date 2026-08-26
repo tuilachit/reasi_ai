@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
+import LegalPage from './LegalPage.jsx'
 import { supabase } from './lib/supabaseClient.js'
 import { formatFlooredPlus, validateWaitlistSignup } from './lib/waitlist.js'
 
@@ -120,7 +121,7 @@ function NativePhone({ screen, compact = false }) {
   )
 }
 
-export default function App() {
+function MarketingApp() {
   const wlEmailRef = useRef(null)
   const [activeStage, setActiveStage] = useState(lifecycleStages[0].key)
   const [rowCount, setRowCount] = useState(DEFAULT_WAITLIST_COUNT)
@@ -533,7 +534,25 @@ export default function App() {
       <footer>
         <img className="footer-logo" src="/logos/Logo.png" alt="Reasi" />
         <span className="footer-copy">© 2025 Reasi AI · Australia</span>
+        <nav className="footer-legal" aria-label="Legal pages">
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+        </nav>
       </footer>
     </>
   )
+}
+
+export default function App() {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/'
+
+  if (path === '/privacy') {
+    return <LegalPage document="privacy" />
+  }
+
+  if (path === '/terms') {
+    return <LegalPage document="terms" />
+  }
+
+  return <MarketingApp />
 }
