@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import './LegalPage.css'
 
 const EFFECTIVE_DATE = '26 August 2026'
-const CONTACT_EMAIL = 'privacy@reasi.ai'
+const CONTACT_EMAIL = 'privacy@reasiai.com'
 
 function LegalLayout({ title, summary, children }) {
   useEffect(() => {
