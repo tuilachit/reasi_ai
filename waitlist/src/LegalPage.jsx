@@ -4,7 +4,7 @@ import './LegalPage.css'
 const EFFECTIVE_DATE = '26 August 2026'
 const CONTACT_EMAIL = 'privacy@reasiai.com'
 
-function LegalLayout({ title, summary, children }) {
+function LegalLayout({ title, summary, children, showDate = true }) {
   useEffect(() => {
     document.title = `${title} | Reasi`
     window.scrollTo(0, 0)
@@ -25,7 +25,7 @@ function LegalLayout({ title, summary, children }) {
         <p className="legal-kicker">Reasi legal</p>
         <h1>{title}</h1>
         <p className="legal-summary">{summary}</p>
-        <p className="legal-date">Effective and last updated: {EFFECTIVE_DATE}</p>
+        {showDate && <p className="legal-date">Effective and last updated: {EFFECTIVE_DATE}</p>}
 
         <div className="legal-rule" />
         <article className="legal-content">{children}</article>
@@ -36,6 +36,7 @@ function LegalLayout({ title, summary, children }) {
         <nav aria-label="Legal pages">
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
+          <a href="/support">Support</a>
           <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
         </nav>
       </footer>
@@ -301,6 +302,81 @@ function TermsOfService() {
   )
 }
 
+function SupportPage() {
+  return (
+    <LegalLayout
+      title="Reasi Support"
+      summary="Help with your account, meal plans, shopping lists, store routes, and photo tools."
+      showDate={false}
+    >
+      <section>
+        <h2>Contact Reasi</h2>
+        <p>
+          Email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> for app issues, feedback,
+          privacy requests, or account help. Reasi is based in Sydney, New South Wales, Australia.
+        </p>
+        <p>
+          Please include the device model, iOS version, and a short description of what happened.
+          Do not email passwords, sign-in codes, payment details, or sensitive photos.
+        </p>
+      </section>
+
+      <section>
+        <h2>Sign-in and verification</h2>
+        <p>
+          Reasi supports Sign in with Apple, Google, and email. If email sign-up is waiting for
+          verification, open the latest verification message and then return to Reasi. Password
+          reset is available from the email sign-in screen.
+        </p>
+      </section>
+
+      <section>
+        <h2>Meal plans and shopping lists</h2>
+        <p>
+          Plan generation needs an internet connection and can take a little time. If a request
+          fails, keep your previous plan and try again. Shopping progress is saved to your account
+          and restored after sign-in.
+        </p>
+      </section>
+
+      <section>
+        <h2>Store routes</h2>
+        <p>Reasi currently supports these Sydney stores:</p>
+        <ul>
+          <li>Coles Top Ryde</li>
+          <li>Coles East Village</li>
+          <li>Coles Rhodes</li>
+          <li>Coles Surry Hills</li>
+          <li>Woolworths Rhodes</li>
+        </ul>
+        <p>
+          Product availability, price, and aisle information can change. Reasi marks uncertain
+          locations instead of presenting an unverified aisle as exact.
+        </p>
+      </section>
+
+      <section>
+        <h2>Camera and photos</h2>
+        <p>
+          Camera access is used only when you choose barcode scanning, product identification, or
+          handwritten-list extraction. You can change camera and photo access in iOS Settings.
+        </p>
+      </section>
+
+      <section>
+        <h2>Delete your account</h2>
+        <p>
+          In Reasi, open Profile, choose Delete account, and confirm. This removes or de-identifies
+          Reasi-owned account data as described in the <a href="/privacy">Privacy Policy</a>. You can
+          also email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> for help with a deletion request.
+        </p>
+      </section>
+    </LegalLayout>
+  )
+}
+
 export default function LegalPage({ document }) {
-  return document === 'terms' ? <TermsOfService /> : <PrivacyPolicy />
+  if (document === 'terms') return <TermsOfService />
+  if (document === 'support') return <SupportPage />
+  return <PrivacyPolicy />
 }

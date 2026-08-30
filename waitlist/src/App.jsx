@@ -537,6 +537,7 @@ function MarketingApp() {
         <nav className="footer-legal" aria-label="Legal pages">
           <a href="/privacy">Privacy</a>
           <a href="/terms">Terms</a>
+          <a href="/support">Support</a>
         </nav>
       </footer>
     </>
@@ -552,6 +553,10 @@ export default function App() {
 
   if (path === '/terms') {
     return <LegalPage document="terms" />
+  }
+
+  if (path === '/support') {
+    return <LegalPage document="support" />
   }
 
   return <MarketingApp />
