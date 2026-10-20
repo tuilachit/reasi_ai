@@ -1,24 +1,29 @@
-import { useEffect } from 'react'
-import './LegalPage.css'
+import type { ReactNode } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import "./legal-page.css";
 
 const EFFECTIVE_DATE = '31 August 2026'
 const CONTACT_EMAIL = 'support@reasiai.com'
 
-function LegalLayout({ title, summary, children, showDate = true }) {
-  useEffect(() => {
-    document.title = `${title} | Reasi`
-    window.scrollTo(0, 0)
-  }, [title])
+type LegalLayoutProps = {
+  title: string;
+  summary: string;
+  children: ReactNode;
+  showDate?: boolean;
+};
+
+function LegalLayout({ title, summary, children, showDate = true }: LegalLayoutProps) {
 
   return (
     <div className="legal-page">
       <header className="legal-header">
-        <a className="legal-brand" href="/" aria-label="Reasi home">
-          <img src="/logos/Logo.png" alt="Reasi" />
-        </a>
-        <a className="legal-back" href="/">
+        <Link className="legal-brand" href="/" aria-label="Reasi home">
+          <Image src="/logos/Logo.png" alt="Reasi" width={112} height={38} />
+        </Link>
+        <Link className="legal-back" href="/">
           Back to Reasi
-        </a>
+        </Link>
       </header>
 
       <main className="legal-main">
@@ -34,9 +39,9 @@ function LegalLayout({ title, summary, children, showDate = true }) {
       <footer className="legal-footer">
         <span>Reasi AI, Australia</span>
         <nav aria-label="Legal pages">
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
-          <a href="/support">Support</a>
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/support">Support</Link>
           <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
         </nav>
       </footer>
@@ -53,7 +58,7 @@ function PrivacyPolicy() {
       <section>
         <h2>1. About this policy</h2>
         <p>
-          This policy explains how Reasi AI ("Reasi", "we", "us") handles personal information
+          This policy explains how Reasi AI (&quot;Reasi&quot;, &quot;we&quot;, &quot;us&quot;) handles personal information
           through the Reasi iOS app, website, and related services. Reasi is based in Australia.
           Questions or privacy requests can be sent to <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
         </p>
@@ -175,7 +180,7 @@ function TermsOfService() {
         <h2>1. Agreement</h2>
         <p>
           These terms apply when you use the Reasi iOS app, website, and related services. By creating an
-          account or using Reasi, you agree to these terms and the <a href="/privacy">Privacy Policy</a>.
+          account or using Reasi, you agree to these terms and the <Link href="/privacy">Privacy Policy</Link>.
           If you do not agree, do not use the service.
         </p>
       </section>
@@ -239,7 +244,7 @@ function TermsOfService() {
           <li>use Reasi unlawfully, deceptively, or to harm another person;</li>
           <li>attempt to bypass account, free-preview, subscription, rate, or security controls;</li>
           <li>probe, scrape, reverse engineer, disrupt, or overload the service except where law expressly allows;</li>
-          <li>upload content you do not have the right to use, or content that is malicious or infringes another person's rights;</li>
+          <li>upload content you do not have the right to use, or content that is malicious or infringes another person&apos;s rights;</li>
           <li>use automated output as a substitute for checking safety-critical food, allergy, health, or pricing information.</li>
         </ul>
       </section>
@@ -250,7 +255,7 @@ function TermsOfService() {
           You keep ownership of content you submit. You give Reasi a limited licence to host, process, reproduce,
           and transform that content only as needed to operate, secure, and improve the service. Reasi and its
           licensors retain rights in the app, brand, software, design, and service content. Third-party product,
-          retailer, image, and source content remains subject to its owner's terms.
+          retailer, image, and source content remains subject to its owner&apos;s terms.
         </p>
       </section>
 
@@ -367,7 +372,7 @@ function SupportPage() {
         <h2>Delete your account</h2>
         <p>
           In Reasi, open Profile, choose Delete account, and confirm. This removes or de-identifies
-          Reasi-owned account data as described in the <a href="/privacy">Privacy Policy</a>. You can
+          Reasi-owned account data as described in the <Link href="/privacy">Privacy Policy</Link>. You can
           also email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a> for help with a deletion request.
         </p>
       </section>
@@ -375,7 +380,7 @@ function SupportPage() {
   )
 }
 
-export default function LegalPage({ document }) {
+export default function LegalPage({ document }: { document: "privacy" | "terms" | "support" }) {
   if (document === 'terms') return <TermsOfService />
   if (document === 'support') return <SupportPage />
   return <PrivacyPolicy />

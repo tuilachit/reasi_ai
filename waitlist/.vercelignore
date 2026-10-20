@@ -1,0 +1,11 @@
+artifacts
+tests
+test-results
+playwright-report
+*.tsbuildinfo
+README.md
+docs
+public/products
+public/videos
+public/reasi-app
+test

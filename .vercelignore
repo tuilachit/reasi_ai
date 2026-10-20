@@ -1,0 +1,10 @@
+waitlist/artifacts
+waitlist/tests
+waitlist/test
+waitlist/test-results
+waitlist/playwright-report
+waitlist/*.tsbuildinfo
+waitlist/docs
+waitlist/public/videos
+waitlist/public/reasi-app
+waitlist/README.md
